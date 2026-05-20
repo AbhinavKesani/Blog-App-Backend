@@ -73,3 +73,23 @@ commonRouter.put("/change-password", async (req, res) => {
   res.status(200).json({message :"password has been updated"})
 });
 
+import { authenticate } from "../Services/authService.js";
+
+userRoute.post("/authenticate", async (req, res, next) => {
+  try {
+    const { token, user } = await authenticate(req.body);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none", // IMPORTANT for Vercel + Render
+    });
+
+    res.status(200).json({
+      message: "login success",
+      payload: user,
+    });
+  } catch (err) {
+    next(err);
+  }
+});

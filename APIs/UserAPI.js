@@ -1,4 +1,10 @@
-// read all articles
+import exp from "express";
+import { ArticleModel } from "../models/ArticleModel.js";
+import { verifyToken } from "../middlewares/verifyToken.js";
+
+export const userRoute = exp.Router();
+
+/* READ ALL ARTICLES */
 userRoute.get(
   "/articles",
   verifyToken("USER", "AUTHOR", "ADMIN"),
@@ -21,7 +27,7 @@ userRoute.get(
   }
 );
 
-// add comments
+/* ADD COMMENT */
 userRoute.put(
   "/articles",
   verifyToken("USER", "AUTHOR", "ADMIN"),
@@ -29,7 +35,6 @@ userRoute.put(
     try {
       const { articleId, comment } = req.body;
 
-      // basic validation
       if (!articleId || !comment) {
         return res.status(400).json({
           message: "articleId and comment are required",
@@ -54,10 +59,7 @@ userRoute.put(
             new: true,
             runValidators: true,
           }
-        ).populate(
-          "comments.user",
-          "email firstName"
-        );
+        ).populate("comments.user", "email firstName");
 
       if (!articleWithComment) {
         return res.status(404).json({
