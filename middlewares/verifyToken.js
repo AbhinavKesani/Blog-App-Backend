@@ -7,48 +7,98 @@ config();
 export const verifyToken = (...allowedRoles) => {
   return async (req, res, next) => {
     try {
-      // Read token from cookie
-      const token = req.cookies.token;
-      if (!token) {
-        return res.status(401).json({ message: "Unauthorized. Please login" });
+      let token;
+
+      // 1. Check Authorization Header
+      const authHeader = req.headers.authorization;
+
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
       }
 
-      // Verify and decode token
-      const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+      // 2. Check Cookie Token
+      if (!token && req.cookies.token) {
+        token = req.cookies.token;
+      }
 
-      // 3. Role check (ONLY if roles are provided)
-      if (!allowedRoles.includes(decodedToken.role)) {
-        return res.status(403).json({
-          message: "Forbidden. You don't have permission",
+      // 3. No token
+      if (!token) {
+        return res.status(401).json({
+          message: "Unauthorized. Please login",
         });
       }
 
-      // 4. Check if user still exists & active
-      const user = await UserTypeModel.findById(decodedToken.userId);
+      // 4. Verify JWT
+      const decodedToken = jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
+
+      // 5. Role validation
+      if (
+        allowedRoles.length > 0 &&
+        !allowedRoles.includes(decodedToken.role)
+      ) {
+        return res.status(403).json({
+          message: "Forbidden. Access denied",
+        });
+      }
+
+      // 6. Check user exists
+      const user = await UserTypeModel.findById(
+        decodedToken.userId
+      );
 
       if (!user || !user.isActive) {
         return res.status(403).json({
-          message: "User account is blocked or not found",
+          message: "User account inactive or deleted",
         });
       }
 
-      // Attach user info to req for use in routes
+      // 7. Attach user
       req.user = decodedToken;
 
       next();
     } catch (err) {
-      // jwt.verify throws if token is invalid/expired
       if (err.name === "TokenExpiredError") {
-        return res
-          .status(401)
-          .json({ message: "Session expired. Please login again" });
+        return res.status(401).json({
+          message: "Session expired. Login again",
+        });
       }
+
       if (err.name === "JsonWebTokenError") {
-        return res
-          .status(401)
-          .json({ message: "Invalid token. Please login again" });
+        return res.status(401).json({
+          message: "Invalid token",
+        });
       }
-      // next(err);
+
+      return res.status(500).json({
+        message: "Server error",
+      });
     }
   };
 };
+// authenticate user
+userRoute.post("/authenticate", async (req, res, next) => {
+  try {
+    let userCred = req.body;
+
+    // call authenticate service
+    let { token, user } = await authenticate(userCred);
+
+    // save token in cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
+
+    res.status(200).json({
+      message: "login success",
+      token,
+      payload: user,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
