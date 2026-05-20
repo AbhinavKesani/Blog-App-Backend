@@ -8,36 +8,28 @@ import cookieParser from "cookie-parser";
 import { commonRouter } from "./APIs/CommanAPI.js";
 import cors from "cors";
 
-config(); //process.env
+config();
 
 const app = exp();
 
-// UPDATED CORS CONFIGURATION
-const allowedOrigins = [
-  "https://blog-app-frontend-three-theta.vercel.app",
-  "https://blog-app-frontend-dusky-seven.vercel.app",
-];
-
+/* ✅ FIXED CORS (PRODUCTION SAFE) */
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: "https://blog-app-frontend-three-theta.vercel.app",
     credentials: true,
   })
 );
 
+/* optional but IMPORTANT for cookies in some cases */
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Origin", "https://blog-app-frontend-three-theta.vercel.app");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+
 // body parser
 app.use(exp.json());
-
-// cookie parser
 app.use(cookieParser());
 
 // routes
@@ -46,35 +38,31 @@ app.use("/author-api", authorRoute);
 app.use("/admin-api", adminRoute);
 app.use("/common-api", commonRouter);
 
-// connect DB
+// DB connection
 const connectDB = async () => {
   try {
     await connect(process.env.DB_URL);
-    console.log("DB connection sucess");
+    console.log("DB connected successfully");
 
-    // start server
     app.listen(process.env.PORT, () =>
-      console.log("server started")
+      console.log("Server started")
     );
   } catch (err) {
-    console.log("failed to connect db", err);
+    console.log("DB connection failed", err);
   }
 };
 
 connectDB();
 
-// invalid path handler
-app.use((req, res, next) => {
-  res.json({ message: `${req.url} is invalid path` });
+// invalid route handler
+app.use((req, res) => {
+  res.status(404).json({ message: `${req.url} is invalid path` });
 });
 
-// error handling middleware
+// error handler
 app.use((err, req, res, next) => {
-  console.log("Error name:", err.name);
-  console.log("Error code:", err.code);
-  console.log("Full error:", err);
+  console.log(err);
 
-  // mongoose validation error
   if (err.name === "ValidationError") {
     return res.status(400).json({
       message: "error occurred",
@@ -82,7 +70,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // mongoose cast error
   if (err.name === "CastError") {
     return res.status(400).json({
       message: "error occurred",
@@ -90,36 +77,14 @@ app.use((err, req, res, next) => {
     });
   }
 
-  const errCode =
-    err.code ?? err.cause?.code ?? err.errorResponse?.code;
-
-  const keyValue =
-    err.keyValue ??
-    err.cause?.keyValue ??
-    err.errorResponse?.keyValue;
-
-  // duplicate key error
-  if (errCode === 11000) {
-    const field = Object.keys(keyValue)[0];
-    const value = keyValue[field];
-
+  if (err.code === 11000) {
     return res.status(409).json({
-      message: "error occurred",
-      error: `${field} "${value}" already exists`,
+      message: "duplicate error",
+      error: err.keyValue,
     });
   }
 
-  // custom errors
-  if (err.status) {
-    return res.status(err.status).json({
-      message: "error occurred",
-      error: err.message,
-    });
-  }
-
-  // default server error
   res.status(500).json({
-    message: "error occurred",
-    error: "Server side error",
+    message: "Server error",
   });
 });
