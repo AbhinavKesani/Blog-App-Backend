@@ -14,38 +14,37 @@ config();
 
 const app = exp();
 
+/* PORT FIX (IMPORTANT FOR RENDER) */
+const PORT = process.env.PORT || 10000;
+
+/* FRONTEND URL SAFE CHECK */
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  "https://blog-app-frontend-three-theta.vercel.app";
+
 /* CORS */
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: FRONTEND_URL,
     credentials: true,
   })
 );
 
-/* Extra headers for cookies */
+/* Headers */
 app.use((req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Credentials",
-    "true"
-  );
-
-  res.header(
-    "Access-Control-Allow-Origin",
-    process.env.FRONTEND_URL
-  );
-
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
-
   next();
 });
 
 /* Body parser */
 app.use(exp.json());
 
-/* Cookie parser */
+/* Cookies */
 app.use(cookieParser());
 
 /* Routes */
@@ -54,36 +53,37 @@ app.use("/author-api", authorRoute);
 app.use("/admin-api", adminRoute);
 app.use("/common-api", commonRouter);
 
-/* DB connection */
+/* TEST ROUTE (helps debugging) */
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
+});
+
+/* DB + SERVER START */
 const connectDB = async () => {
   try {
     await connect(process.env.DB_URL);
 
     console.log("DB connected successfully");
 
-    app.listen(process.env.PORT, () => {
-      console.log(
-        `Server running on port ${process.env.PORT}`
-      );
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.log(
-      "DB connection failed:",
-      err.message
-    );
+    console.log("DB connection failed:", err.message);
+    process.exit(1); // IMPORTANT: fail clearly instead of silent crash
   }
 };
 
 connectDB();
 
-/* Invalid route handler */
+/* 404 handler */
 app.use((req, res) => {
   res.status(404).json({
     message: `${req.url} is invalid path`,
   });
 });
 
-/* Global error handler */
+/* Error handler */
 app.use((err, req, res, next) => {
   console.log(err);
 
