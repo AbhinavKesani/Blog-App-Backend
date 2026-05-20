@@ -1,78 +1,49 @@
-import exp from "express";
-import { ArticleModel } from "../models/ArticleModel.js";
-import { verifyToken } from "../middlewares/verifyToken.js";
+import express from "express";
+import { UserTypeModel } from "../models/UserTypeModel.js";
+import bcrypt from "bcryptjs";
 
-export const userRoute = exp.Router();
+export const userRoute = express.Router();
 
-/* READ ALL ARTICLES */
-userRoute.get(
-  "/articles",
-  verifyToken("USER", "AUTHOR", "ADMIN"),
-  async (req, res, next) => {
-    try {
-      const articles = await ArticleModel.find({
-        isArticleActive: true,
-      }).populate("comments.user", "email firstName");
+/* =========================
+   REGISTER USER
+========================= */
+userRoute.post("/users", async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
 
-      return res.status(200).json({
-        message:
-          articles.length === 0
-            ? "no articles"
-            : "list of articles",
-        payload: articles,
+    // check missing fields
+    if (!firstName || !lastName || !email || !password || !role) {
+      return res.status(400).json({
+        message: "All fields are required",
       });
-    } catch (err) {
-      next(err);
     }
-  }
-);
 
-/* ADD COMMENT */
-userRoute.put(
-  "/articles",
-  verifyToken("USER", "AUTHOR", "ADMIN"),
-  async (req, res, next) => {
-    try {
-      const { articleId, comment } = req.body;
+    // check existing user
+    const existingUser = await UserTypeModel.findOne({ email });
 
-      if (!articleId || !comment) {
-        return res.status(400).json({
-          message: "articleId and comment are required",
-        });
-      }
-
-      const articleWithComment =
-        await ArticleModel.findOneAndUpdate(
-          {
-            _id: articleId,
-            isArticleActive: true,
-          },
-          {
-            $push: {
-              comments: {
-                user: req.user.userId,
-                comment,
-              },
-            },
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        ).populate("comments.user", "email firstName");
-
-      if (!articleWithComment) {
-        return res.status(404).json({
-          message: "Article not found",
-        });
-      }
-
-      return res.status(200).json({
-        message: "comment added successfully",
-        payload: articleWithComment,
+    if (existingUser) {
+      return res.status(409).json({
+        message: "User already exists",
       });
-    } catch (err) {
-      next(err);
     }
+
+    // hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // create user
+    const newUser = await UserTypeModel.create({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    res.status(201).json({
+      message: "User registered successfully",
+      payload: newUser,
+    });
+  } catch (err) {
+    next(err);
   }
-);
+});
