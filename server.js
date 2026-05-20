@@ -1,90 +1,114 @@
 import exp from "express";
 import { connect } from "mongoose";
 import { config } from "dotenv";
+
 import { userRoute } from "./APIs/UserAPI.js";
 import { authorRoute } from "./APIs/AuthorAPI.js";
 import { adminRoute } from "./APIs/AdminAPI.js";
-import cookieParser from "cookie-parser";
 import { commonRouter } from "./APIs/CommanAPI.js";
+
+import cookieParser from "cookie-parser";
 import cors from "cors";
 
 config();
 
 const app = exp();
 
-/* ✅ FIXED CORS (PRODUCTION SAFE) */
+/* CORS */
 app.use(
   cors({
-    origin: "https://blog-app-frontend-three-theta.vercel.app",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
 
-/* optional but IMPORTANT for cookies in some cases */
+/* Extra headers for cookies */
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Origin", "https://blog-app-frontend-three-theta.vercel.app");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header(
+    "Access-Control-Allow-Credentials",
+    "true"
+  );
+
+  res.header(
+    "Access-Control-Allow-Origin",
+    process.env.FRONTEND_URL
+  );
+
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+
   next();
 });
 
-// body parser
+/* Body parser */
 app.use(exp.json());
+
+/* Cookie parser */
 app.use(cookieParser());
 
-// routes
+/* Routes */
 app.use("/user-api", userRoute);
 app.use("/author-api", authorRoute);
 app.use("/admin-api", adminRoute);
 app.use("/common-api", commonRouter);
 
-// DB connection
+/* DB connection */
 const connectDB = async () => {
   try {
     await connect(process.env.DB_URL);
+
     console.log("DB connected successfully");
 
-    app.listen(process.env.PORT, () =>
-      console.log("Server started")
-    );
+    app.listen(process.env.PORT, () => {
+      console.log(
+        `Server running on port ${process.env.PORT}`
+      );
+    });
   } catch (err) {
-    console.log("DB connection failed", err);
+    console.log(
+      "DB connection failed:",
+      err.message
+    );
   }
 };
 
 connectDB();
 
-// invalid route handler
+/* Invalid route handler */
 app.use((req, res) => {
-  res.status(404).json({ message: `${req.url} is invalid path` });
+  res.status(404).json({
+    message: `${req.url} is invalid path`,
+  });
 });
 
-// error handler
+/* Global error handler */
 app.use((err, req, res, next) => {
   console.log(err);
 
   if (err.name === "ValidationError") {
     return res.status(400).json({
-      message: "error occurred",
+      message: "Validation error",
       error: err.message,
     });
   }
 
   if (err.name === "CastError") {
     return res.status(400).json({
-      message: "error occurred",
+      message: "Invalid ID",
       error: err.message,
     });
   }
 
   if (err.code === 11000) {
     return res.status(409).json({
-      message: "duplicate error",
+      message: "Duplicate key error",
       error: err.keyValue,
     });
   }
 
-  res.status(500).json({
-    message: "Server error",
+  return res.status(500).json({
+    message: "Internal Server Error",
   });
 });
