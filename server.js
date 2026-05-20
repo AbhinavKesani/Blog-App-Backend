@@ -14,37 +14,51 @@ config();
 
 const app = exp();
 
-/* PORT FIX (IMPORTANT FOR RENDER) */
+/* PORT */
 const PORT = process.env.PORT || 10000;
 
-/* FRONTEND URL SAFE CHECK */
-const FRONTEND_URL =
-  process.env.FRONTEND_URL ||
-  "https://blog-app-frontend-three-theta.vercel.app";
+/* ALLOWED ORIGINS */
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://blog-app-frontend-three-theta.vercel.app",
+];
 
 /* CORS */
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
 
-/* Headers */
+/* Headers (IMPORTANT FIX) */
 app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
   res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Origin", FRONTEND_URL);
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
+
   next();
 });
 
 /* Body parser */
 app.use(exp.json());
-
-/* Cookies */
 app.use(cookieParser());
 
 /* Routes */
@@ -53,12 +67,12 @@ app.use("/author-api", authorRoute);
 app.use("/admin-api", adminRoute);
 app.use("/common-api", commonRouter);
 
-/* TEST ROUTE (helps debugging) */
+/* Health check */
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-/* DB + SERVER START */
+/* DB + SERVER */
 const connectDB = async () => {
   try {
     await connect(process.env.DB_URL);
@@ -70,13 +84,13 @@ const connectDB = async () => {
     });
   } catch (err) {
     console.log("DB connection failed:", err.message);
-    process.exit(1); // IMPORTANT: fail clearly instead of silent crash
+    process.exit(1);
   }
 };
 
 connectDB();
 
-/* 404 handler */
+/* 404 */
 app.use((req, res) => {
   res.status(404).json({
     message: `${req.url} is invalid path`,
@@ -86,27 +100,6 @@ app.use((req, res) => {
 /* Error handler */
 app.use((err, req, res, next) => {
   console.log(err);
-
-  if (err.name === "ValidationError") {
-    return res.status(400).json({
-      message: "Validation error",
-      error: err.message,
-    });
-  }
-
-  if (err.name === "CastError") {
-    return res.status(400).json({
-      message: "Invalid ID",
-      error: err.message,
-    });
-  }
-
-  if (err.code === 11000) {
-    return res.status(409).json({
-      message: "Duplicate key error",
-      error: err.keyValue,
-    });
-  }
 
   return res.status(500).json({
     message: "Internal Server Error",
