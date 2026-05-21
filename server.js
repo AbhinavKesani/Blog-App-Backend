@@ -19,10 +19,7 @@ const PORT = process.env.PORT || 10000;
 ========================= */
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://blog-app-frontend-three-theta.vercel.app",
-    ],
+    origin: true,
     credentials: true,
   })
 );
