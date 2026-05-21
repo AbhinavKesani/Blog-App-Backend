@@ -1,0 +1,129 @@
+
+
+
+### author register
+POST  http://localhost:4000/author-api/users
+Content-Type: application/json
+  
+{
+    "fisrtName":"Vinay",
+    "lastName":"Author",
+    "email":"Vinay.author@example.com",
+    "password":"vinay@12345",
+    "profileImageUrl":""
+}
+
+
+### authenticating author or login
+POST http://localhost:4000/common-api/login
+Content-Type: application/json
+
+{
+    "email":"Vikas.author@example.com",
+    "password":"vikas@12345"
+    
+} 
+
+
+
+### authenticate admin - login
+POST http://127.0.0.1:4000/common-api/login
+Content-Type: application/json
+
+{
+    "email":"admin@mail.com",
+    "password":"admin123"
+}
+
+
+###create article
+POST http://localhost:4000/author-api/articles
+Content-Type: application/json
+
+{
+    "author":"69896b3816052123bf15dfbc",
+    "title":"samsung",
+    "category":"phones",
+    "content":"only s series"
+}
+
+
+#### read all articles of the author
+GET http://localhost:4000/author-api/articles
+
+
+###update article 
+PUT  http://localhost:4000/author-api/articles
+Content-Type: application/json
+
+{
+    "author":"69896b3816052123bf15dfbc",
+    "articleId":"69897a62f75c78a7afdafbfb",
+    "title":"geo",
+    "category":"history",
+    "content":"india"
+}
+
+#### delete article
+PATCH    http://localhost:4000/author-api/articles
+Content-Type: application/json
+
+{
+    "author":"69ae8a72558ec313cc8c7254",
+    "articleId":"69897a62f75c78a7afdafbfb"
+   
+}  
+
+
+
+
+ 
+### common logout for all 
+GET  http://localhost:4000/common-api/logout
+
+
+
+
+
+###block user
+PUT http://localhost:4000/admin-api/users/block
+Content-Type:application/json
+
+{   "admin":"698ac05f7c3bf2598f56c159",
+    "user":"69896a237f6161a0db1db588"
+}
+
+
+###unblock
+PUT http://localhost:4000/admin-api/users/unblock
+Content-Type:application/json
+
+{   "admin":"698ac05f7c3bf2598f56c159",
+    "user":"69ae82114966103df9b8d794"
+}
+
+
+
+###change password
+put http://localhost:4000/common-api/change-password
+Content-Type: application/json
+
+{
+    "currentPass":"vikas@123",
+    "newPass":"vikas@12345",
+    "email":"Vikas.author@example.com"
+}
+
+
+ 
+### test req
+GET http://localhost:4000/test
+
+
+
+###softdelete
+PATCH http://localhost:4000/author-api/articles/69899b40a086aa9234ab7554/status
+Content-Type: application/json
+
+{ "isArticleActive": false }
+### to make active or restore set it true
