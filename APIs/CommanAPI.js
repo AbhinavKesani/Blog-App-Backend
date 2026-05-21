@@ -1,7 +1,8 @@
 import exp from "express";
+import bcrypt from "bcryptjs";
+
 import { authenticate } from "../Services/authService.js";
 import { UserTypeModel } from "../models/UserTypeModel.js";
-import { compare, hash } from "bcryptjs";
 import { verifyToken } from "../middlewares/verifyToken.js";
 
 export const commonRouter = exp.Router();
@@ -14,7 +15,7 @@ commonRouter.post("/login", async (req, res, next) => {
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false, // change to true only in HTTPS production with same-site none
+      secure: false,
     });
 
     res.status(200).json({
@@ -59,18 +60,26 @@ commonRouter.put("/change-password", async (req, res, next) => {
     const userDoc = await UserTypeModel.findOne({ email });
 
     if (!userDoc) {
-      return res.status(404).json({ message: "invalid email" });
+      return res.status(404).json({
+        message: "invalid email",
+      });
     }
 
-    const isMatch = await compare(currentPass, userDoc.password);
+    const isMatch = await bcrypt.compare(
+      currentPass,
+      userDoc.password
+    );
 
     if (!isMatch) {
-      return res.status(400).json({ message: "incorrect password" });
+      return res.status(400).json({
+        message: "incorrect password",
+      });
     }
 
-    const hashedPassword = await hash(newPass, 10);
+    const hashedPassword = await bcrypt.hash(newPass, 10);
 
     userDoc.password = hashedPassword;
+
     await userDoc.save();
 
     res.status(200).json({
