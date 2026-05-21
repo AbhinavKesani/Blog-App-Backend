@@ -1,5 +1,6 @@
 import express from "express";
 import { UserTypeModel } from "../models/UserTypeModel.js";
+import { ArticleModel } from "../models/ArticleModel.js";
 import bcrypt from "bcryptjs";
 
 export const userRoute = express.Router();
@@ -21,7 +22,7 @@ userRoute.post("/users", async (req, res, next) => {
       });
     }
 
-    // prevent fake admin role (important)
+    // prevent fake admin role
     if (role === "admin") {
       return res.status(403).json({
         message: "Cannot assign admin role",
@@ -56,6 +57,24 @@ userRoute.post("/users", async (req, res, next) => {
     return res.status(201).json({
       message: "User registered successfully",
       payload: userResponse,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* =========================
+   GET ALL ACTIVE ARTICLES
+========================= */
+userRoute.get("/articles", async (req, res, next) => {
+  try {
+    const articles = await ArticleModel.find({
+      isArticleActive: true,
+    }).populate("author", "firstName email");
+
+    res.status(200).json({
+      message: "all articles",
+      payload: articles,
     });
   } catch (err) {
     next(err);
