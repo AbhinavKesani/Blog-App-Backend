@@ -14,8 +14,8 @@ commonRouter.post("/login", async (req, res, next) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: false,
+      sameSite: "none",
+      secure: true,
     });
 
     res.status(200).json({
@@ -43,8 +43,8 @@ commonRouter.get(
 commonRouter.get("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: "none",
+    secure: true,
   });
 
   res.status(200).json({
