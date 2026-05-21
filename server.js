@@ -16,10 +16,13 @@ const PORT = process.env.PORT || 10000;
 
 /* STEP 1: CORS (VERY IMPORTANT) */
 app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-  })
+cors({
+  origin: [
+    "http://localhost:5173",
+    "https://blog-app-frontend-bkvxckr56-abhinav-kesani-s-projects.vercel.app"
+  ],
+  credentials: true
+})
 );
 
 /* STEP 2: MIDDLEWARES */
