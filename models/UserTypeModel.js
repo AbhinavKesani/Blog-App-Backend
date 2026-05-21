@@ -2,30 +2,38 @@ import { Schema, model } from "mongoose";
 
 const userSchema = new Schema(
   {
-    fisrtName: {
+    firstName: {
       type: String,
-      required: [true, "first name is required"],
+      required: true,
     },
+
     lastName: {
       type: String,
+      required: true,
     },
+
     email: {
       type: String,
-      required: [true, "email is required"],
-      unique: [true, "email already existed"],
+      required: true,
+      unique: true,
     },
+
     password: {
       type: String,
-      required: [true, "invalid password"],
+      required: true,
     },
-    profileImageUrl: {
-      type: String,
-    },
+
     role: {
       type: String,
-      enum: ["AUTHOR", "USER", "ADMIN"],
-      required: [true, "{Value} is an invalid role"],
+      enum: ["USER", "AUTHOR", "ADMIN"],
+      required: true,
     },
+
+    profileImageUrl: {
+      type: String,
+      default: "",
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -33,10 +41,12 @@ const userSchema = new Schema(
   },
   {
     timestamps: true,
-    strict: "throw",
+
+    // IMPORTANT FIX
+    strict: true,
+
     versionKey: false,
-  },
+  }
 );
 
-//create model
 export const UserTypeModel = model("user", userSchema);
