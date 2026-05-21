@@ -4,36 +4,34 @@ const userSchema = new Schema(
   {
     firstName: {
       type: String,
-      required: [true, "first name is required"],
+      required: true,
     },
 
     lastName: {
       type: String,
-      required: [true, "last name is required"],
+      required: true,
     },
 
     email: {
       type: String,
-      required: [true, "email is required"],
+      required: true,
       unique: true,
-      lowercase: true,
-      trim: true,
     },
 
     password: {
       type: String,
-      required: [true, "password is required"],
+      required: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["USER", "AUTHOR", "ADMIN"],
+      required: true,
     },
 
     profileImageUrl: {
       type: String,
       default: "",
-    },
-
-    role: {
-      type: String,
-      enum: ["AUTHOR", "USER", "ADMIN"],
-      required: [true, "invalid role"],
     },
 
     isActive: {
@@ -44,12 +42,11 @@ const userSchema = new Schema(
   {
     timestamps: true,
 
-    // FIXED HERE
+    // IMPORTANT FIX
     strict: true,
 
     versionKey: false,
   }
 );
 
-// create model
 export const UserTypeModel = model("user", userSchema);
