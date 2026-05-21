@@ -27,8 +27,7 @@ app.use(
   })
 );
 
-// IMPORTANT: Handle preflight requests
-app.options("*", cors());
+
 
 /* =========================
    STEP 2: MIDDLEWARES
