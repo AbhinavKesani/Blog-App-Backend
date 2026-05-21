@@ -9,12 +9,22 @@ export const userRoute = express.Router();
 ========================= */
 userRoute.post("/users", async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password, role } = req.body;
+    let { firstName, lastName, email, password, role } = req.body;
 
-    // check missing fields
+    // normalize email
+    email = email?.toLowerCase().trim();
+
+    // validation
     if (!firstName || !lastName || !email || !password || !role) {
       return res.status(400).json({
         message: "All fields are required",
+      });
+    }
+
+    // prevent fake admin role (important)
+    if (role === "admin") {
+      return res.status(403).json({
+        message: "Cannot assign admin role",
       });
     }
 
@@ -39,9 +49,13 @@ userRoute.post("/users", async (req, res, next) => {
       role,
     });
 
-    res.status(201).json({
+    // remove password before sending response
+    const userResponse = newUser.toObject();
+    delete userResponse.password;
+
+    return res.status(201).json({
       message: "User registered successfully",
-      payload: newUser,
+      payload: userResponse,
     });
   } catch (err) {
     next(err);
