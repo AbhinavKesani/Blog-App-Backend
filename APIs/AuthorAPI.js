@@ -1,159 +1,124 @@
-import exp from "express";
-import mongoose from "mongoose";
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../store/authStore";
+import { useNavigate } from "react-router";
+import axios from "axios";
+import { toast } from "react-hot-toast";
 
-import { register } from "../Services/authService.js";
-import { ArticleModel } from "../models/ArticleModel.js";
-import { verifyToken } from "../middlewares/verifyToken.js";
+import {
+  pageBackground,
+  pageWrapper,
+  articleGrid,
+  articleCardClass,
+  articleTitle,
+  articleBody,
+  timestampClass,
+  ghostBtn,
+  loadingClass,
+  errorClass,
+} from "../styles/common";
 
-export const authorRoute = exp.Router();
+function UserDashboard() {
+  const CurrentUser = useAuth((state) => state.CurrentUser);
+  const navigate = useNavigate();
 
-/* REGISTER AUTHOR (PUBLIC) */
-authorRoute.post("/users", async (req, res, next) => {
-  try {
-    const userObj = req.body;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [articles, setArticles] = useState([]);
 
-    const newUserObj = await register({
-      ...userObj,
-      role: "AUTHOR",
+  // Fetch articles
+  useEffect(() => {
+    const read = async () => {
+      setLoading(true);
+
+      try {
+        const res = await axios.get(
+          "https://blog-app-backend-tgj0.onrender.com/author-api/articles",
+          {
+            withCredentials: true,
+          }
+        );
+
+        setArticles(res.data.payload);
+      } catch (err) {
+        setError(err.response?.data?.error || "Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    read();
+  }, []);
+
+  // Safe date format
+  const formatDate = (date) => {
+    if (!date) return "No date";
+
+    return new Date(date).toLocaleDateString("en-IN");
+  };
+
+  // Safe author name
+  const getAuthorName = (author) => {
+    if (!author) return "Unknown Author";
+
+    if (typeof author === "string") return "Author";
+
+    return author.firstName || "Author";
+  };
+
+  // Navigate to article
+  const navigateToArticle = (articleObj) => {
+    navigate(`/article/${articleObj._id}`, {
+      state: articleObj,
     });
+  };
 
-    res.status(201).json({
-      message: "Author created",
-      payload: newUserObj,
-    });
-  } catch (err) {
-    next(err);
+  if (loading) {
+    return <p className={loadingClass}>Loading articles...</p>;
   }
-});
 
-/* CREATE ARTICLE */
-authorRoute.post(
-  "/articles",
-  verifyToken("AUTHOR"),
-  async (req, res, next) => {
-    try {
-      const article = req.body;
+  return (
+    <div className={pageBackground}>
+      <div className={pageWrapper}>
+        {error && <p className={errorClass}>{error}</p>}
 
-      const newArticle = new ArticleModel({
-        ...article,
-        author: req.user.userId, // IMPORTANT FIX
-      });
+        {/* Articles */}
+        <div className={articleGrid}>
+          {articles.map((articleObj) => (
+            <div key={articleObj?._id} className={articleCardClass}>
+              <div className="flex flex-col h-full">
+                <div>
+                  <p className={articleTitle}>
+                    {articleObj?.title || "Untitled"}
+                  </p>
 
-      const saved = await newArticle.save();
+                  <p className={articleBody}>
+                    {articleObj?.content
+                      ? articleObj.content.slice(0, 120) + "..."
+                      : "No content available"}
+                  </p>
 
-      res.status(201).json({
-        message: "article is created",
-        payload: saved,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
+                  <p className="text-sm text-gray-500 mt-2">
+                    {getAuthorName(articleObj?.author)}
+                  </p>
 
-/* GET AUTHOR ARTICLES */
-authorRoute.get(
-  "/articles",
-  verifyToken("AUTHOR"),
-  async (req, res, next) => {
-    try {
-      const authorId = req.user.userId;
+                  <p className={timestampClass}>
+                    {formatDate(articleObj?.createdAt)}
+                  </p>
+                </div>
 
-      const allArticles = await ArticleModel.find({
-        author: authorId,
-      }).populate("author", "firstName email");
+                <button
+                  onClick={() => navigateToArticle(articleObj)}
+                  className={`${ghostBtn} mt-auto pt-4`}
+                >
+                  Read Article
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      res.status(200).json({
-        message: "articles of author",
-        payload: allArticles,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-/* UPDATE ARTICLE */
-authorRoute.put(
-  "/articles/:articleId",
-  verifyToken("AUTHOR"),
-  async (req, res, next) => {
-    try {
-      const { articleId } = req.params;
-      const { title, category, content } = req.body;
-
-      if (!mongoose.Types.ObjectId.isValid(articleId)) {
-        return res.status(400).json({ message: "Invalid article ID" });
-      }
-
-      const updated = await ArticleModel.findOneAndUpdate(
-        {
-          _id: articleId,
-          author: req.user.userId,
-          isArticleActive: true,
-        },
-        {
-          $set: { title, category, content },
-        },
-        { new: true, runValidators: true }
-      );
-
-      if (!updated) {
-        return res.status(404).json({
-          message: "Article not found or no permission",
-        });
-      }
-
-      res.status(200).json({
-        message: "Article updated",
-        payload: updated,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-/* TOGGLE ARTICLE STATUS */
-authorRoute.patch(
-  "/articles/:id/status",
-  verifyToken("AUTHOR"),
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { isArticleActive } = req.body;
-
-      const article = await ArticleModel.findById(id);
-
-      if (!article) {
-        return res.status(404).json({ message: "Article not found" });
-      }
-
-      if (article.author.toString() !== req.user.userId) {
-        return res.status(403).json({
-          message: "Forbidden. You can only modify your own articles",
-        });
-      }
-
-      if (article.isArticleActive === isArticleActive) {
-        return res.status(400).json({
-          message: `Article already ${
-            isArticleActive ? "active" : "deleted"
-          }`,
-        });
-      }
-
-      article.isArticleActive = isArticleActive;
-      await article.save();
-
-      res.status(200).json({
-        message: `Article ${
-          isArticleActive ? "restored" : "deleted"
-        } successfully`,
-        payload: article,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
+export default UserDashboard;
